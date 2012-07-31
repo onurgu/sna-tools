@@ -1,0 +1,7 @@
+captures/
+db/
+stats/
+results/
+*.pyc
+debug.log
+urllist.txt
