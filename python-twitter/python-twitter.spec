@@ -1,7 +1,7 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:           python-twitter
-Version:        0.7-devel
+Version:        0.5
 Release:        1%{?dist}
 Summary:        Python Interface for Twitter API
 
@@ -12,7 +12,7 @@ Source0:        http://python-twitter.googlecode.com/files/%{name}-%{version}.ta
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildArch:      noarch
-Requires:       python >= 2.4, python-simplejson >= 2.0.7
+Requires:       python >= 2.3, python-simplejson >= 2.0.7
 BuildRequires:  python-setuptools
 
 

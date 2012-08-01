@@ -18,31 +18,30 @@ USAGE = '''Usage: tweet [options] message
   Options:
 
     -h --help : print this help
-    --consumer-key : the twitter consumer key
-    --consumer-secret : the twitter consumer secret
-    --access-key : the twitter access token key
-    --access-secret : the twitter access token secret
+    --username : the twitter username [optional]
+    --password : the twitter password [optional]
     --encoding : the character set encoding used in input strings, e.g. "utf-8". [optional]
 
   Documentation:
 
+  If the --username or --password command line arguments are present they
+  will be used to authenticate to Twitter.
+
   If either of the command line flags are not present, the environment
   variables TWEETUSERNAME and TWEETPASSWORD will then be checked for your
-  consumer_key or consumer_secret, respectively.
+  username or password, respectively.
 
   If neither the command line flags nor the enviroment variables are
   present, the .tweetrc file, if it exists, can be used to set the
-  default consumer_key and consumer_secret.  The file should contain the
-  following three lines, replacing *consumer_key* with your consumer key, and
-  *consumer_secret* with your consumer secret:
+  default username and password.  The file should contain the
+  following three lines, replacing *username* with your username, and
+  *possword* with your password:
 
   A skeletal .tweetrc file:
 
     [Tweet]
-    consumer_key: *consumer_key*
-    consumer_secret: *consumer_password*
-    access_key: *access_key*
-    access_secret: *access_password*
+    username: *username*
+    password: *password*
 
 '''
 
@@ -50,33 +49,21 @@ def PrintUsageAndExit():
   print USAGE
   sys.exit(2)
 
-def GetConsumerKeyEnv():
+def GetUsernameEnv():
   return os.environ.get("TWEETUSERNAME", None)
 
-def GetConsumerSecretEnv():
+def GetPasswordEnv():
   return os.environ.get("TWEETPASSWORD", None)
-
-def GetAccessKeyEnv():
-  return os.environ.get("TWEETACCESSKEY", None)
-
-def GetAccessSecretEnv():
-  return os.environ.get("TWEETACCESSSECRET", None)
 
 class TweetRc(object):
   def __init__(self):
     self._config = None
 
-  def GetConsumerKey(self):
-    return self._GetOption('consumer_key')
+  def GetUsername(self):
+    return self._GetOption('username')
 
-  def GetConsumerSecret(self):
-    return self._GetOption('consumer_secret')
-
-  def GetAccessKey(self):
-    return self._GetOption('access_key')
-
-  def GetAccessSecret(self):
-    return self._GetOption('access_secret')
+  def GetPassword(self):
+    return self._GetOption('password')
 
   def _GetOption(self, option):
     try:
@@ -93,42 +80,31 @@ class TweetRc(object):
 def main():
   try:
     shortflags = 'h'
-    longflags = ['help', 'consumer-key=', 'consumer-secret=', 
-                 'access-key=', 'access-secret=', 'encoding=']
+    longflags = ['help', 'username=', 'password=', 'encoding=']
     opts, args = getopt.gnu_getopt(sys.argv[1:], shortflags, longflags)
   except getopt.GetoptError:
     PrintUsageAndExit()
-  consumer_keyflag = None
-  consumer_secretflag = None
-  access_keyflag = None
-  access_secretflag = None
+  usernameflag = None
+  passwordflag = None
   encoding = None
   for o, a in opts:
     if o in ("-h", "--help"):
       PrintUsageAndExit()
-    if o in ("--consumer-key"):
-      consumer_keyflag = a
-    if o in ("--consumer-secret"):
-      consumer_secretflag = a
-    if o in ("--access-key"):
-      access_keyflag = a
-    if o in ("--access-secret"):
-      access_secretflag = a
+    if o in ("--username"):
+      usernameflag = a
+    if o in ("--password"):
+      passwordflag = a
     if o in ("--encoding"):
       encoding = a
   message = ' '.join(args)
   if not message:
     PrintUsageAndExit()
   rc = TweetRc()
-  consumer_key = consumer_keyflag or GetConsumerKeyEnv() or rc.GetConsumerKey()
-  consumer_secret = consumer_secretflag or GetConsumerSecretEnv() or rc.GetConsumerSecret()
-  access_key = access_keyflag or GetAccessKeyEnv() or rc.GetAccessKey()
-  access_secret = access_secretflag or GetAccessSecretEnv() or rc.GetAccessSecret()
-  if not consumer_key or not consumer_secret or not access_key or not access_secret:
+  username = usernameflag or GetUsernameEnv() or rc.GetUsername()
+  password = passwordflag or GetPasswordEnv() or rc.GetPassword()
+  if not username or not password:
     PrintUsageAndExit()
-  api = twitter.Api(consumer_key=consumer_key, consumer_secret=consumer_secret,
-                    access_token_key=access_key, access_token_secret=access_secret,
-                    input_encoding=encoding)
+  api = twitter.Api(username=username, password=password, input_encoding=encoding)
   try:
     status = api.PostUpdate(message)
   except UnicodeDecodeError:
