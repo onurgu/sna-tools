@@ -1,33 +1,39 @@
 =Python Twitter=
 
-_A python wrapper around the Twitter API_
+_A Python wrapper around the Twitter API_
 
-Author: `DeWitt Clinton <dewitt@google.com>`
+Author: `The Python-Twitter Developers <python-twitter@googlegroups.com>`
 
 ==Introduction==
 
-This library provides a pure python interface for the Twitter API.
+This library provides a pure Python interface for the Twitter API.
 
 Twitter (http://twitter.com) provides a service that allows people to
-connect via the web, IM, and SMS.  Twitter exposes a web services API 
-(http://twitter.com/help/api) and this library is intended to make
-it even easier for python programmers to use. 
+connect via the web, IM, and SMS.  Twitter exposes a web services API
+(http://dev.twitter.com/doc) and this library is intended to make
+it even easier for Python programmers to use.
 
-  
 ==Building==
 
 *From source:*
 
 Install the dependencies:
 
-  http://cheeseshop.python.org/pypi/simplejson
+  SimpleJson
+    http://cheeseshop.python.org/pypi/simplejson
+
+  SimpleGeo's OAuth2
+    http://github.com/simplegeo/python-oauth2 or
+    http://pypi.python.org/pypi/oauth2
+
+  HTTPLib2 (installed along with oauth2 if you use setuptools)
+    http://code.google.com/p/httplib2/
 
 Download the latest python-twitter library from:
 
   http://code.google.com/p/python-twitter/
 
-
-Untar the source distribution and run:
+Extract the source distribution and run:
 
 {{{
   $ python setup.py build
@@ -57,21 +63,21 @@ View the trunk at:
 Check out the latest development version anonymously with:
 
 {{{
-  $ hg clone https://python-twitter.googlecode.com/hg/ python-twitter
-  $ cd python-twitter
-  $ hg update dev
+   $ hg clone http://python-twitter.googlecode.com/hg/ python-twitter
+   $ cd python-twitter
+   $ hg update dev
 }}}
 
 ==Documentation==
 
 View the last release API documentation at:
 
-  http://static.unto.net/python-twitter/0.6/doc/twitter.html
+  http://dev.twitter.com/doc
 
 ==Using==
 
-The library provides a python wrapper around the Twitter API and
-the twitter data model.
+The library provides a Python wrapper around the Twitter API and
+the Twitter data model.
 
 *Model:*
 
@@ -100,11 +106,24 @@ To create an instance of the twitter.Api class:
 }}}
 
 To create an instance of the twitter.Api with login credentials (many API
-calls required the client to be authenticated):
+calls required the client to be authenticated.)
 
-  >>> api = twitter.Api(username='username', password='password) 
+The python-twitter library now only supports oAuth authentication as the
+Twitter devs have indicated that oAuth is the only method that will be
+supported moving forward.
 
-To fetch the most recently posted public twitter status messages:
+  >>> api = twitter.Api(consumer_key='consumer_key',
+                        consumer_secret='consumer_secret',
+                        access_token_key='access_token',
+                        access_token_secret='access_token_secret')
+
+To see if your credentials are successful:
+ NOTE - much more than the small sample given here will print
+
+  >>> print api.VerifyCredentials()
+  {"id": 16133, "location": "Philadelphia", "name": "bear"}
+
+To fetch the most recently posted public Twitter status messages:
 
 {{{
   >>> statuses = api.GetPublicTimeline()
@@ -127,10 +146,10 @@ To fetch a list a user's friends (requires authentication):
   >>> print [u.name for u in users]
 }}}
 
-To post a twitter status message (requires authentication):
+To post a Twitter status message (requires authentication):
 
-{{{ 
-  >>> status = api.PostUpdate(username, password, 'I love python-twitter!')
+{{{
+  >>> status = api.PostUpdate('I love python-twitter!')
   >>> print status.text
   I love python-twitter!
 }}}
@@ -142,20 +161,20 @@ There are many more API methods, to read the full API documentation:
 }}}
 
 ==Todo==
- 
+
 Patches and bug reports are welcome, just please keep the style
 consistent with the original source.
 
 Add more example scripts.
 
 The twitter.Status and twitter.User classes are going to be hard
-to keep in sync with the API if the API changes.  More of the 
+to keep in sync with the API if the API changes.  More of the
 code could probably be written with introspection.
 
 Statement coverage of twitter_test is only about 80% of twitter.py.
 
-The twitter.Status and twitter.User classes could perform more validation
-on the property setters.
+The twitter.Status and twitter.User classes could perform more
+validation on the property setters.
 
 ==More Information==
 
@@ -164,14 +183,14 @@ Please visit http://groups.google.com/group/python-twitter for more discussion.
 ==Contributors==
 
 Additional thanks to Pierre-Jean Coudert, Omar Kilani, Jodok Batlogg,
-edleaf,glen.tregoning, Brad Choate, Jim Cortez, Jason Lemoine, Thomas
-Dyson, Robert Laquey, Hameedullah Khan, and the rest of the
-python-twitter mailing list.
+edleaf, glen.tregoning, Brad Choate, Jim Cortez, Jason Lemoine, Thomas
+Dyson, Robert Laquey, Hameedullah Khan, Mike Taylor, DeWitt Clinton, 
+and the rest of the python-twitter mailing list.
 
 ==License==
 
 {{{
-  Copyright 2007 Google Inc. All Rights Reserved.
+  Copyright 2007 The Python-Twitter Developers
   
   Licensed under the Apache License, Version 2.0 (the 'License');
   you may not use this file except in compliance with the License.
