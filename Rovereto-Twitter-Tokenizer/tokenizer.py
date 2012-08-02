@@ -63,16 +63,19 @@ first_layer_validators = [unicode_compile(r'^%s$' % reg) for reg in first_layer_
 second_layer_validators = [unicode_compile(r'^%s$' % reg) for reg in second_layer_tokens]
 third_layer_validators = [unicode_compile(r'^%s$' % reg) for reg in third_layer_tokens]
 
+# 0: FALSE
+# 1: TRUE
+# 2: Do not include
 def is_token(el):    
     for reg in first_layer_validators:
         if reg.match(el):
-            return True
+            return 2
     for reg in second_layer_validators:
         if reg.match(el):
-            return True
+            return 1
     if re.match('^[\w]+$', el, re.U):
-        return True    
-    return False
+        return 1    
+    return 0
     
 def debug_log(msg):
     if DEBUG:
@@ -82,38 +85,48 @@ def preprocess(content, recognizers):
     debug_log("Before preprocess: %s" % content)    
     for reg in recognizers:
         content = reg.sub(r' \1 ', content)
+#        content = reg.sub(r' ', content)
         debug_log("preprocess: %s" % content)
     return content
 
 def tokenize(content):
+    print content
     tokens = list()
     content = re.sub(ur'[\n\r\t]', ' ', content)
     content = content.decode("utf8")    
     tokens = list()
-    for pre_token in content.split():        
-        if is_token(pre_token):
-            tokens.append(pre_token)
-            debug_log("Accepted in first layer: %s" % pre_token)
+    for pre_token in content.split():   
+        ret = is_token(pre_token)
+        if ret > 0:
+            if ret == 1:
+                tokens.append(pre_token)
+                debug_log("Accepted in first layer: %s" % pre_token)
             continue
         else:
             elements = preprocess(pre_token, first_layer_recognizers).split()            
             for element in elements:
-                if is_token(element):                    
-                    tokens.append(element)
-                    debug_log("Accepted in second layer: %s" % element)
+                ret = is_token(element)
+                if ret > 0:                    
+                    if ret == 1:
+                        tokens.append(element)
+                        debug_log("Accepted in second layer: %s" % element)
                     continue
                 else:
                     for x in preprocess(element, second_layer_recognizers).split():
-                        if is_token(x):
-                            debug_log("Accepted in third layer: %s" % x)
-                            tokens.append(x)
+                        ret = is_token(x)
+                        if ret > 0:
+                            if ret == 1:
+                                debug_log("Accepted in third layer: %s" % x)
+                                tokens.append(x)
                         else:
                             for y in preprocess(x, third_layer_recognizers).split():
-                                debug_log("Accepted in fourth layer: %s" % y)
-                                tokens.append(y)
-                                debug_log(y)
+                                ret = is_token(y)
+                                if ret == 1:
+                                    debug_log("Accepted in fourth layer: %s" % y)
+                                    tokens.append(y)
+                                    debug_log(y)
     return [x.encode("utf8") for x in tokens]
 
 if __name__ == "__main__":
-    txt = "RT @justinbieber: and that's for those that dont know...they've great records like this. #GREATMUSIC: http://www.youtube.com/watch?v=cF"
+    txt = "RT @justinbieber: and that's for those that dont know...they've great records like this. #GREATMUSIC: http://www.youtube.com/watch?v=cF ."
     print " ".join(tokenize(txt))
