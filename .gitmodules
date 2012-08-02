@@ -1,0 +1,3 @@
+[submodule "Rovereto-Twitter-Tokenizer"]
+	path = Rovereto-Twitter-Tokenizer
+	url = https://github.com/onurgu/Rovereto-Twitter-Tokenizer.git

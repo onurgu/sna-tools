@@ -88,7 +88,7 @@ def preprocess(content, recognizers):
 def tokenize(content):
     tokens = list()
     content = re.sub(ur'[\n\r\t]', ' ', content)
-    #content = content.decode("utf8")
+    content = content.decode("utf8")    
     tokens = list()
     for pre_token in content.split():        
         if is_token(pre_token):
