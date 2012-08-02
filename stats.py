@@ -14,6 +14,38 @@ class Stats():
         self.tokens_dates = []
         self.keyword_codings = {}
     
+    def generateCSVByUsername(self):
+        self.inputfile = open(self.ifilename, "r")
+        self.ofile = open(self.ofilename, "w")
+        csvWriter = csv.writer(self.ofile, delimiter=',', quotechar="'",quoting=csv.QUOTE_NONNUMERIC)
+        line = self.inputfile.readline()
+        i = 0
+        while len(line) > 0:
+            i = i + 1
+            try:
+                tweet = jsonpickle.decode(line)
+            except ValueError, e:
+                print repr(e)
+                line = self.inputfile.readline()
+                continue
+            if tweet.has_key("delete") or tweet.has_key("scrub_geo") or tweet.has_key("limit"):
+                print "unimplemented data item"
+            else:
+                #print tweet["text"]
+                text = tweet["text"]
+                screen_name = tweet["user"]["screen_name"]
+                user_id = tweet["user"]["id_str"]
+                tweet_id = tweet["id_str"]
+                tweet_w = time.strptime(tweet["created_at"], "%a %b %d %H:%M:%S +0000 %Y")
+                tokens = tokenizer.tokenize(text)
+                token_display = screen_name + " " + user_id + " " + tweet_id
+                for token in tokens:
+                    token_display += " "+token
+                print token_display
+                csvWriter.writerow(token_display.split())
+            line = self.inputfile.readline()
+        self.ofile.close()
+
     def processFile(self):
         self.inputfile = open(self.ifilename, "r") 
         line = self.inputfile.readline()
@@ -79,3 +111,7 @@ class Stats():
     def recordTokens(self, tokens, t):
         for token in tokens:
             self.tokens_dates.append([token, t])
+
+if __name__ == '__main__':
+    stats = Stats(CAPTURE_DIR+'filter-gazeteciler.txt', RESULTS_DIR+'test_tweets_by_username.csv', "")
+    stats.generateCSVByUsername()
