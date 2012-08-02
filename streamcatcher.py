@@ -63,6 +63,9 @@ class StreamCatcher(threading.Thread):
                 self.ofile.flush()
                 self.fixCaptureFile(self.ofile)
                 self.ofile.close()
+            # gnutls: a tls packet with unexpected size is received.
+            elif e[0] == 56:
+                print "tls packet with unexpected size"
             else:
                 raise
         sys.stdout.write(".")
