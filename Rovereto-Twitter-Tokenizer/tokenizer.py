@@ -21,7 +21,7 @@ def unicode_compile(regexp):
     return re.compile(ur'%s' % regexp.decode("utf-8"), re.U|re.I)
 
 DEBUG = False
-if len(sys.argv) > 1:
+if len(sys.argv) > 4:
     DEBUG = True
 
 clitics = r''
@@ -90,10 +90,11 @@ def preprocess(content, recognizers):
     return content
 
 def tokenize(content):
-    print content
+    #print content
     tokens = list()
     content = re.sub(ur'[\n\r\t]', ' ', content)
-    content = content.decode("utf8")    
+    # commenting out. now expecting unicode strings only.
+    # content = content.decode("utf8")
     tokens = list()
     for pre_token in content.split():   
         ret = is_token(pre_token)
