@@ -3,7 +3,13 @@ from config import *
 import jsonpickle
 import tokenizer
 
+import re
+
 import csv, time
+
+import sys, argparse
+
+import TurkishMorphology
 
 class Stats():
     def __init__(self, ifilename, ofilename, ofilename2):
@@ -14,7 +20,35 @@ class Stats():
         self.tokens_dates = []
         self.keyword_codings = {}
     
+    def combineRowsByFirstField(self):
+        '''
+        expecting the input file to be in CSV format.
+        '''
+        self.inputfile = open(self.ifilename, "r")
+        self.ofile = open(self.ofilename, "w")
+        csvReader = csv.reader(self.inputfile, delimiter=',', quotechar="'",quoting=csv.QUOTE_NONNUMERIC)
+        csvWriter = csv.writer(self.ofile, delimiter=',', quotechar="'",quoting=csv.QUOTE_NONNUMERIC)
+        combined_hash = dict()
+        for row in csvReader:
+            if len(row) == 0:
+                # skip empty rows.
+                continue
+            firstField = row[0]
+            skipThisManyFields = 3
+            if combined_hash.has_key(firstField):
+                combined_hash[firstField] = combined_hash[firstField] + row[skipThisManyFields:]
+            else:
+                combined_hash[firstField] = row[skipThisManyFields:]
+        for key in combined_hash.keys():
+            csvWriter.writerow([key] + combined_hash[key])
+
     def generateCSVByUsername(self):
+        exclude_list = ["Det", "Adv", "Pron", "Conj", "Postp"]
+        exclude_regs = []
+        for e in exclude_list:
+            exclude_regs.append(re.compile("^.*?\[%s\]$" % e))
+        print len(exclude_regs)
+	TurkishMorphology.load_lexicon('turkish.fst');
         self.inputfile = open(self.ifilename, "r")
         self.ofile = open(self.ofilename, "w")
         csvWriter = csv.writer(self.ofile, delimiter=',', quotechar="'",quoting=csv.QUOTE_NONNUMERIC)
@@ -32,17 +66,42 @@ class Stats():
                 print "unimplemented data item"
             else:
                 #print tweet["text"]
-                text = tweet["text"]
+                text = unicode(tweet["text"])
                 screen_name = tweet["user"]["screen_name"]
                 user_id = tweet["user"]["id_str"]
                 tweet_id = tweet["id_str"]
                 tweet_w = time.strptime(tweet["created_at"], "%a %b %d %H:%M:%S +0000 %Y")
                 tokens = tokenizer.tokenize(text)
                 token_display = screen_name + " " + user_id + " " + tweet_id
+                parsed_display = screen_name + " " + user_id + " " + tweet_id
+                # parsing token by token for now. might think about parsing the whole sequence at once.
                 for token in tokens:
                     token_display += " "+token
-                print token_display
-                csvWriter.writerow(token_display.split())
+                    parses = TurkishMorphology.parse(token)
+                    if not parses:
+                        parsed_display += " "+token+"[Unknown]"
+                        continue
+                    min_neglogprob = float('inf')
+                    min_parse = None
+                    for p in parses:
+                        (parse, neglogprob) = p
+                        if neglogprob < min_neglogprob:
+                            min_neglogprob = neglogprob
+                            min_parse = parse
+                    first_layer = min_parse.split('+')
+                    second_layer = first_layer[0].split('-')
+                    include_token = True
+                    for exclude_reg in exclude_regs:
+                        result = exclude_reg.match(second_layer[0])
+                        if result:
+                            include_token = False
+                            break
+                    if include_token:
+                        parsed_display += " "+second_layer[0]
+                #print token_display
+                #print parsed_display
+                ##csvWriter.writerow(token_display.split())
+                csvWriter.writerow(parsed_display.split())
             line = self.inputfile.readline()
         self.ofile.close()
 
@@ -112,6 +171,20 @@ class Stats():
         for token in tokens:
             self.tokens_dates.append([token, t])
 
+parser = argparse.ArgumentParser()
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-p", "--parse-json", action="store_true", dest="command")
+group.add_argument("-c", "--combine-by-first-field", action="store_false", dest="command")
+parser.add_argument("inputfilename")
+parser.add_argument("outputfilename")
+args = parser.parse_args()
+
 if __name__ == '__main__':
-    stats = Stats(CAPTURE_DIR+'filter-gazeteciler.txt', RESULTS_DIR+'test_tweets_by_username.csv', "")
-    stats.generateCSVByUsername()
+    filename = args.inputfilename
+    out_filename = args.outputfilename
+    stats = Stats(filename, out_filename, "")
+    if args.command:
+        stats.generateCSVByUsername()
+    else:
+        stats.combineRowsByFirstField()
+        
