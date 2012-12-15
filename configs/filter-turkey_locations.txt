@@ -1,0 +1,7 @@
+hash_code: turkey_locations
+type: filter
+locations:
+  - 25.663883
+  - 35.817497
+  - 44.822762
+  - 42.109993
