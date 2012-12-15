@@ -1,13 +1,22 @@
 #! /usr/bin/env python
 
+#
+# Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
+#
+
 import sys, threading, time, logging, os
 import pycurl
 
 import jsonpickle
-import logging
+import logging, logging.handlers
 
 import Queue
 import sqlite3
+import httplib, urllib2
+
+import re
+
+import gzip
 
 # local
 from config import *
@@ -28,10 +37,12 @@ ABORTING_WAIT_TOO_LONG_CODE = 1
 NOT_AUTHORIZED_ERROR_CODE = -1
 PAGE_NOT_FOUND_ERROR_CODE = -2
 HTTP_EXCEPTION_CODE = -3
+URL_EXCEPTION_CODE = -4
+UNKNOWN_EXCEPTION_CODE = -5
 
 class TimelineHarvester(threading.Thread):
 
-    def __init__(self, twitter_api, label, screenname, capture_subdirname, result_queue, last_tweet_id, since_tweet_id):
+    def __init__(self, twitter_api, logger, label, screenname, capture_subdirname, result_queue, since_tweet_id):
 
         # required for threads
         super(TimelineHarvester, self).__init__()
@@ -39,9 +50,10 @@ class TimelineHarvester(threading.Thread):
         self.screenname = screenname
         self.label = label
 
-        logging.info("Starting thread "+self.getJobDescription())
+        self.logger = logger
 
-        self.last_tweet_id = last_tweet_id
+        self.logger.info("Starting thread "+self.getJobDescription())
+
         if since_tweet_id == "-1":
             self.since_tweet_id = -1
         else:
@@ -51,11 +63,11 @@ class TimelineHarvester(threading.Thread):
         if not os.access(TIMELINE_CAPTURE_DIR+"/"+capture_subdirname, os.X_OK):
             os.mkdir(TIMELINE_CAPTURE_DIR+"/"+capture_subdirname)
             
-        self.capturefilename = TIMELINE_CAPTURE_DIR+"/"+capture_subdirname+"/"+label+"-capture-"+screenname+".txt"
-        self.ofile = open(self.capturefilename, "a")
+        self.capturefilename = TIMELINE_CAPTURE_DIR+"/"+capture_subdirname+"/"+label+"-capture-"+screenname+".txt.gz"
+        self.ofile = gzip.open(self.capturefilename, "a")
 
-        self.logfilename = TIMELINE_CAPTURE_DIR+"/"+capture_subdirname+"/log-capture-"+capture_subdirname+".log"
-        self.logfile = open(self.logfilename, "a")
+        # self.logfilename = TIMELINE_CAPTURE_DIR+"/"+capture_subdirname+"/log-capture-"+capture_subdirname+".log"
+        # self.logfile = open(self.logfilename, "a")
 
         self.api = twitter_api
 
@@ -69,19 +81,23 @@ class TimelineHarvester(threading.Thread):
             if ret_code == 0:
                 break
             else:
+                self.log(self.getJobDescription() + str(count) + ". try: MaximumHitFrequency could not be retrieved")
+                time.sleep(5)
                 count += 1
-                if count == 2:
-                    self.log(self.getJobDescription() + "FATAL ERROR. MaximumHitFrequency could not be retrieved")
-                    sys.exit()
+                # if count == 2:
+
+                #    sys.exit()
 
         count = 0
         while True:
             (reset_sleep_duration, remaining_rate_limit) = self.getRemainingRateLimit()
             if reset_sleep_duration == None or remaining_rate_limit == None:
+                self.log(self.getJobDescription() + str(count) + ". try: FATAL ERROR. RemainingRateLimit could not be retrieved")
+                time.sleep(5)
                 count += 1
-                if count == 2:
-                    self.log(self.getJobDescription() + "FATAL ERROR. RemainingRateLimit could not be retrieved")
-                    sys.exit()
+                # if count == 2:
+
+                #     sys.exit()
             else:
                 break
         self.log(self.getJobDescription() + ": Remaining Rate Limit: " + str(remaining_rate_limit))
@@ -91,7 +107,7 @@ class TimelineHarvester(threading.Thread):
     def log(self, text):
         # self.logfile.write(text+"\n")
         # self.logfile.flush()
-        logging.info(text)
+        self.logger.info(text)
 
     def getJobDescription(self):
         return self.label+":"+self.screenname
@@ -130,9 +146,15 @@ class TimelineHarvester(threading.Thread):
                     backoff_duration = 512
                     if func.__name__ != 'Api.MaximumHitFrequency' and func.__name__ != 'Api.GetRateLimitStatus':
                         count += 1
-            except HTTPException as e:
+            except httplib.HTTPException as e:
                 self.log(self.getJobDescription() + ": makeApiCall: " + str(e))
                 return [HTTP_EXCEPTION_CODE, None]
+            except urllib2.URLError as e:
+                self.log(self.getJobDescription() + ": makeApiCall: " + str(e))
+                return [URL_EXCEPTION_CODE, None]
+            except Exception as e:
+                self.log(self.getJobDescription() + ": makeApiCall: " + str(e))
+                return [UNKNOWN_EXCEPTION_CODE, None]
         return [ret_code, ret]
 
     def GetUserTimeline(self, *args):
@@ -146,15 +168,16 @@ class TimelineHarvester(threading.Thread):
                 last_tweet_id = None
             if since_tweet_id == -1:
                 since_tweet_id = None
-            else:
-                last_tweet_id = None
-        return self.api.GetUserTimeline(screen_name=self.screenname, include_rts=1, count=200, max_id=last_tweet_id, since_id=since_tweet_id)
+            # else:
+            #     last_tweet_id = None
+        return self.api.GetUserTimeline(screen_name=self.screenname, no_cache=True, include_rts=1, count=200, max_id=last_tweet_id, since_id=since_tweet_id)
 
     def fetchTimeline(self):
+        all_tweets = []
         page_not_found = 0
         finished = False
         first = True
-        last_tweet_id = self.last_tweet_id
+        last_tweet_id = -1
         last_processed_tweet_id = -1
         n_tweets_retrieved = 0
         while not finished:
@@ -182,13 +205,14 @@ class TimelineHarvester(threading.Thread):
                     since_tweet_id = -1
             ### write received tweets and determine the max_id
             if len(tweets) > 0:
-                for tweet in tweets:
-                    self.ofile.write(tweet.AsJsonString()+"\n")
+                # for tweet in tweets:
+                #     self.ofile.write(tweet.AsJsonString()+"\n")
                     # sys.stdout.write(".")
                     # sys.stdout.flush()
                 # sys.stdout.write("\n")
                 # sys.stdout.flush()
-                self.ofile.flush()
+                # self.ofile.flush()
+                all_tweets = all_tweets + tweets
                 n_tweets_retrieved += len(tweets)
                 last_tweet_id = tweets[-1].id
                 if last_processed_tweet_id != -1 and last_processed_tweet_id == last_tweet_id:
@@ -197,12 +221,16 @@ class TimelineHarvester(threading.Thread):
             else:
                 self.log(self.getJobDescription() + ": No tweets received.. Stopping timeline fetch.")
                 finished = True
-        self.ofile.flush()
-        self.ofile.close()
         if ret_code == PAGE_NOT_FOUND_ERROR_CODE:
             page_not_found = 1
         self.log(self.getJobDescription() + ": Retrieved "+str(n_tweets_retrieved)+" tweets.")
-        return [last_tweet_id, since_tweet_id, n_tweets_retrieved, page_not_found]
+        for i in range(1, len(all_tweets)+1):
+            tweet = all_tweets[len(all_tweets)-i]
+            self.ofile.write(tweet.AsJsonString()+"\n")
+        self.ofile.flush()
+        self.ofile.close()
+#        return [last_tweet_id, since_tweet_id, n_tweets_retrieved, page_not_found]
+        return [since_tweet_id, n_tweets_retrieved, page_not_found]
 
     def getRemainingRateLimit(self):
         ## rate_limit_status = self.api.GetRateLimitStatus()
@@ -250,26 +278,45 @@ def read_userlist(filename):
 
     return userlist
 
-def update_userinfo(db_cursor, screenname, update_since_tweet_id, last_tweet_id, since_tweet_id, n_tweets_retrieved, page_not_found):
+def update_userinfo(db_cursor, screenname, update_since_tweet_id, since_tweet_id, n_tweets_retrieved, page_not_found):
     db_cursor.execute("SELECT * FROM users WHERE screenname = ?", [screenname])
     row = db_cursor.fetchone()
+    updated_at = "%s" % datetime.datetime.now()
     if row == None:
-        db_cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?)", [screenname, last_tweet_id, since_tweet_id, n_tweets_retrieved, page_not_found])
+        db_cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)", [screenname, since_tweet_id, n_tweets_retrieved, page_not_found, updated_at, updated_at])
     else:
         cur_n_tweets_retrieved = row['n_tweets_retrieved']
         cur_n_tweets_retrieved += n_tweets_retrieved
         if update_since_tweet_id:
-            db_cursor.execute("UPDATE users SET last_tweet_id = ?, since_tweet_id = ?, n_tweets_retrieved = ?, page_not_found = ? WHERE screenname = ?", [last_tweet_id, since_tweet_id, cur_n_tweets_retrieved, page_not_found, screenname])
+            db_cursor.execute("UPDATE users SET since_tweet_id = ?, n_tweets_retrieved = ?, page_not_found = ?, updated_at = ? WHERE screenname = ?", [since_tweet_id, cur_n_tweets_retrieved, page_not_found, updated_at, screenname])
         else:
-            db_cursor.execute("UPDATE users SET last_tweet_id = ?, n_tweets_retrieved = ?, page_not_found = ? WHERE screenname = ?", [last_tweet_id, cur_n_tweets_retrieved, page_not_found, screenname])
+            db_cursor.execute("UPDATE users SET n_tweets_retrieved = ?, page_not_found = ?, updated_at = ? WHERE screenname = ?", [cur_n_tweets_retrieved, page_not_found, updated_at, screenname])
 
 def get_userinfo(db_cursor, screenname):
     db_cursor.execute("SELECT * FROM users WHERE screenname = ?", [screenname])
     row = db_cursor.fetchone()
+    update_required = True
     if row == None:
-        return [-1, -1, -1]
+        return [-1, -1, update_required]
     else:
-        return [row['last_tweet_id'], row['since_tweet_id'], row['page_not_found']]
+        try:
+            updated_at = datetime.datetime.strptime(row['updated_at'], "%Y-%m-%d %H:%M:%S.%f")
+        except ValueError as e:
+            try:
+                updated_at = datetime.datetime.strptime(row['updated_at'], "%Y-%m-%d %H:%M:%S")
+            except ValueError as e2:
+                ####### remove this. just for fixing an inconsistency in the database.
+                tmp_str = row['updated_at']
+                m = re.match("^'(.*)'$", tmp_str)
+                if m:
+                    tmp_str = m.group(1)
+                    updated_at = datetime.datetime.strptime(tmp_str, "%Y-%m-%d %H:%M:%S.%f")
+                    db_cursor.execute("UPDATE users SET created_at = ?, updated_at = ? WHERE screenname = ?", [updated_at, updated_at, screenname])
+                #######
+        now = datetime.datetime.now()
+        if now - datetime.timedelta(days=1) < updated_at:
+            update_required = False
+        return [row['since_tweet_id'], row['page_not_found'], update_required]
 
 if __name__ == "__main__":
 
@@ -294,17 +341,24 @@ if __name__ == "__main__":
         os.mkdir(projectdir)
 
     # logging
-    logging.basicConfig(filename=projectdir+"/messages.log", format='%(asctime)s:: %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p', level=logging.DEBUG)
-    # self.logger= logging.getLogger( __name__ )
-    logging.info("Logging set up.")
+    #logging.basicConfig(filename=projectdir+"/messages.log", format='%(asctime)s:: %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p', level=logging.DEBUG)
 
-    logging.info("Creating the database")
+    logger = logging.getLogger('main_logger')
+    logger.setLevel(logging.DEBUG)
+    handler = logging.handlers.RotatingFileHandler(filename=projectdir+"/messages.log", maxBytes=10**7, backupCount=10)
+    handler.setFormatter(logging.Formatter('%(asctime)s:: %(message)s', '%Y-%m-%d %I:%M:%S %p'))
+
+    logger.addHandler(handler)
+
+    logger.info("Logging set up.")
+
+    logger.info("Creating the database")
     db_filename = projectdir+"/users.db"
     conn = sqlite3.connect(db_filename)
     conn.row_factory = sqlite3.Row
 
     db_cursor = conn.cursor()
-    db_cursor.execute("CREATE TABLE IF NOT EXISTS users (screenname text PRIMARY KEY, last_tweet_id text, since_tweet_id text, n_tweets_retrieved int, page_not_found int)")
+    db_cursor.execute("CREATE TABLE IF NOT EXISTS users (screenname text PRIMARY KEY, since_tweet_id text, n_tweets_retrieved int, page_not_found int, created_at timestamp, updated_at timestamp)")
 
     rate_limit = 350
     estimated_max_calls_per_screenname = 17
@@ -320,21 +374,25 @@ if __name__ == "__main__":
 
     n_running_jobs = 0
 
+    n_screennames = len(screennames)
+
     finished = False
     while not finished:
         while len(screennames) > 0:
             if len(available_twitter_api_array) > 0:
                 [screenname, label] = screennames.pop()
-                (last_tweet_id, since_tweet_id, page_not_found) = get_userinfo(db_cursor, screenname)
+                (since_tweet_id, page_not_found, update_required) = get_userinfo(db_cursor, screenname)
                 if page_not_found == 1:
-                    logging.info("Skipping " + label + ":" + screenname + " (we got page not found error before)")
+                    logger.info("Skipping " + label + ":" + screenname + " (we got page not found error before)")
+                elif not update_required:
+                    logger.info("Skipping " + label + ":" + screenname + " (not expired yet)")
                 else:
                     [token_owner_name, api] = available_twitter_api_array.pop()
-                    t = TimelineHarvester(api, label, screenname, projectname, results_queue, last_tweet_id, since_tweet_id)
+                    t = TimelineHarvester(api, logger, label, screenname, projectname, results_queue, since_tweet_id)
                     task_start_time = time.time()
                     t.start()
-                    logging.info("Thread "+token_owner_name+" => "+label+":"+screenname+" starting..")
-                    sys.stdout.flush()
+                    logger.info("Thread "+token_owner_name+" => "+label+":"+screenname+" starting..")
+                    logger.info("PROGRESS: " + str(len(screennames)) + "/"+str(n_screennames))
                     jobs.append([t, label, screenname, task_start_time, api, token_owner_name])
             else:
                 break
@@ -348,11 +406,11 @@ if __name__ == "__main__":
             t.join(0.001)
             if not t.isAlive():
                 time_elapsed = int(time.time()-task_start_time)
-                logging.info("Stopping thread "+label+":"+screenname+" - (duration: "+str(time_elapsed)+" secs) - "+token_owner_name)
+                logger.info("Stopping thread "+label+":"+screenname+" - (duration: "+str(time_elapsed)+" secs) - "+token_owner_name)
                 sys.stdout.flush()
                 result = results_queue.get(True)
-                tmp_n_tweets_retrieved = result[2]
-                tmp_since_tweet_id = result[1]
+                tmp_n_tweets_retrieved = result[1]
+                tmp_since_tweet_id = result[0]
                 if t.since_tweet_id != -1 and tmp_since_tweet_id == -1:
                     update_since_tweet_id = False
                 else:

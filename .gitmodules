@@ -1,3 +1,6 @@
 [submodule "Rovereto-Twitter-Tokenizer"]
 	path = Rovereto-Twitter-Tokenizer
 	url = git@github.com:onurgu/Rovereto-Twitter-Tokenizer.git
+[submodule "turkish-deasciifier"]
+	path = turkish-deasciifier
+	url = ./turkish-deasciifier

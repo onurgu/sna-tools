@@ -2634,7 +2634,8 @@ class Api(object):
                       count=None,
                       page=None,
                       include_rts=None,
-                      include_entities=None):
+                      include_entities=None,
+                      no_cache=None):
     '''Fetch the sequence of public Status messages for a single user.
 
     The twitter.Api instance must be authenticated if the user is private.
@@ -2722,7 +2723,7 @@ class Api(object):
     if include_entities:
       parameters['include_entities'] = 1
 
-    json = self._FetchUrl(url, parameters=parameters)
+    json = self._FetchUrl(url, parameters=parameters, no_cache=no_cache)
     data = self._ParseAndCheckTwitter(json)
     return [Status.NewFromJsonDict(x) for x in data]
 

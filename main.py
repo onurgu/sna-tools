@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+#
+# Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
+#
+
 import sys, math
 import md5, yaml
 import curses, curses.textpad
@@ -144,13 +148,13 @@ def createNewConfig(input_win, input_win_textbox, status_win):
     input_win.clear()
 
     status_win.clear()
-    status_win.addstr("Geocode")
+    status_win.addstr("locations")
     status_win.refresh()
-    geocode = input_win_textbox.edit().strip()
-    if geocode == "":
-        conf["geocode"] = None
+    locations = input_win_textbox.edit().strip()
+    if locations == "":
+        conf["locations"] = None
     else:
-        conf["geocode"] = geocode.split(",")
+        conf["locations"] = locations.split(",")
     input_win.clear()
 
     # after all content data
@@ -163,11 +167,12 @@ def createNewConfig(input_win, input_win_textbox, status_win):
     return conf_filename
 
 def createThread(threads, requestParameters, win=None):
-    (url, postdata, filename) = requestParameters
-    f = open(filename, "a+")
-    t = StreamCatcher(url, f, postdata, "", win)
+    (url, postdata, filename, postgis_server) = requestParameters
+#    f = open(filename, "a+")
+    t = StreamCatcher(url, filename, postdata, "", postgis_server, win)
     t.start()
-    threads.append((t, f))
+#    threads.append((t, f))
+    threads.append((t, filename))
     return t
     # later, do not forget to join and terminate these threads
 
@@ -178,6 +183,10 @@ def trackFilter(conf_filename, win=None):
 def getRequestParameters(conf_filename):
     f = open(conf_filename, "r")
     conf = yaml.load(f)
+    if conf.has_key("postgis_server"):
+        postgis_server = conf["postgis_server"]
+    else:
+        postgis_server = ""
     if conf.has_key("type") and conf["type"] == "sample":
         url = "https://stream.twitter.com/1/statuses/sample.json"
         # leave blank for sample
@@ -190,7 +199,7 @@ def getRequestParameters(conf_filename):
             filename = CAPTURE_DIR+("/filter-%s.txt" % conf["hash_code"])
         else:
             filename = CAPTURE_DIR+("/filter-%s.txt" % time.strftime("%Y-%m-%d-%H-%M-%S"))
-    return [url, postdata, filename]
+    return [url, postdata, filename, postgis_server]
 
 def preparePostdataForUserList(usernames):
     if usernames == None or len(usernames) == 0:
@@ -207,8 +216,9 @@ def preparePostdata(conf):
         l.append(preparePostdataForUserList(conf["follow_usernames"]))
     if conf.has_key("track_keywords") and conf["track_keywords"] != None and len(conf["track_keywords"]) != 0:
         l.append("track="+(",".join(conf["track_keywords"])))
-    if conf.has_key("geocode") and conf["geocode"] != None and len(conf["geocode"]) != 0:
-        l.append("geo="+",".join(conf["geocode"]))
+    if conf.has_key("locations") and conf["locations"] != None and len(conf["locations"]) != 0:
+        # l.append("locations="+",".join(conf["locations"]))
+        l.append("locations="+",".join([str(x) for x in conf["locations"]]))
     postdata = "&".join(l)
     return postdata
 

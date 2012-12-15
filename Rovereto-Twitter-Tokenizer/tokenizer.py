@@ -24,6 +24,9 @@ DEBUG = False
 if len(sys.argv) > 4:
     DEBUG = True
 
+""" No matter what DEBUG is false for now """
+DEBUG = False
+
 clitics = r''
 
 """ For future reference
@@ -37,6 +40,8 @@ Italian pre-clitics: dall', Dall', dell', Dell', nell', Nell', all', All', d', D
 html_entity = r'&(amp|lt|gt|quot);'
 hashtag = r'#[\w0-9_-]+'
 username = r'@[\w0-9_-]+'
+# removing quotation mark because our morphological analyzer can cope with them.
+# punctuation = r'[.\$"\\\'#+!%^*()[\]\-={}|\:;<>,?/`]'
 punctuation = r'[.\$"\\\'#+!%^*()[\]\-={}|\:;<>,?/`]'
 abbrevations = r'([\w]\.){2,}(?![^ ])'
 emails = r'[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}'
@@ -53,7 +58,7 @@ second_layer_tokens = [html_entity,
 #    second_layer_tokens.append(clitics)
 
 third_layer_tokens = [punctuation,                      
-                     ]
+                      ]
 
 first_layer_recognizers = [unicode_compile(r'(%s)' % reg) for reg in first_layer_tokens]
 second_layer_recognizers = [unicode_compile(r'(%s)' % reg) for reg in second_layer_tokens]
@@ -73,8 +78,11 @@ def is_token(el):
     for reg in second_layer_validators:
         if reg.match(el):
             return 1
-    if re.match('^[\w]+$', el, re.U):
-        return 1    
+    for reg in third_layer_validators:
+        if reg.match(el):
+            return 1
+    if re.match('^[\w\']+$', el, re.U):
+        return 1
     return 0
     
 def debug_log(msg):
@@ -126,8 +134,9 @@ def tokenize(content):
                                     debug_log("Accepted in fourth layer: %s" % y)
                                     tokens.append(y)
                                     debug_log(y)
-    return [x.encode("utf8") for x in tokens]
+    # return [x.encode("utf8") for x in tokens]
+    return tokens
 
 if __name__ == "__main__":
-    txt = "RT @justinbieber: and that's for those that dont know...they've great records like this. #GREATMUSIC: http://www.youtube.com/watch?v=cF ."
+    txt = "RT @justinbieber: and that's for those that dont know...they've great records like this. #GREATMUSIC: http://www.youtube.com/watch?v=cF istanbulda istanbul'da . :) . ,"
     print " ".join(tokenize(txt))

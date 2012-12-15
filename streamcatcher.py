@@ -1,10 +1,16 @@
 #! /usr/bin/env python
 # -*- coding: iso-8859-1 -*-
-# vi:ts=4:et
-# $Id: test.py,v 1.17 2007/04/10 13:25:17 kjetilja Exp $
+
+#
+# Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
+#
 
 import sys, threading, time, logging
 import pycurl
+
+import os, subprocess
+
+#import psycopg2
 
 # local
 from config import *
@@ -19,7 +25,7 @@ except ImportError:
     pass
 
 class StreamCatcher(threading.Thread):
-    def __init__(self, url, ofile, postdata = "", secrets = "", win=None):
+    def __init__(self, url, filename, postdata = "", secrets = "", postgis_server = "", win=None):
         # logging
         # logging.basicConfig(file=LOGGING_DIR+"streamcatcher.log", level=logging.DEBUG )
         # self.logger= logging.getLogger( __name__ )
@@ -27,17 +33,25 @@ class StreamCatcher(threading.Thread):
         # required for threads
         super(StreamCatcher, self).__init__()
 
+        self.ofile_index = 1
+        self.ofilenamebase = filename
+        self.last_filenamechange_time = time.time()
+
+        self.ofile = open(self.ofilenamebase + "." + str(self.ofile_index), "a+")
+        # self.ifile = open(filename, "r")
+
         # set libcurl options
         self.curl = pycurl.Curl()
         self.curl.setopt(pycurl.URL, url)
-        self.curl.setopt(pycurl.WRITEDATA, ofile)
+        # self.curl.setopt(pycurl.WRITEDATA, self.ofile)
+        self.curl.setopt(pycurl.WRITEFUNCTION, self.writefunction)
         self.curl.setopt(pycurl.FOLLOWLOCATION, 1)
         self.curl.setopt(pycurl.MAXREDIRS, 5)
         self.curl.setopt(pycurl.NOSIGNAL, 1)
         self.curl.setopt(pycurl.NOPROGRESS, 0)
         self.curl.setopt(pycurl.PROGRESSFUNCTION, self.progress)
         if len(secrets) == 0:
-            self.curl.setopt(pycurl.USERPWD, "onurgu:osmantosman")
+            self.curl.setopt(pycurl.USERPWD, "thbounsigmalab1:_integral")
         else:
             self.curl.setopt(pycurl.USERPWD, secrets)
         if len(postdata) != 0:
@@ -47,7 +61,35 @@ class StreamCatcher(threading.Thread):
 
         self.download_list_win = win
 
-        self.ofile = ofile
+        # if postgis_server != "":
+        #     self.conn = psycopg2.connect(dbname="gis", user="ortaoyuncu", password="orta", host=postgis_server)
+        # else:
+        #     self.conn = None
+
+    def writefunction(self, buf):
+        change_file = False
+        buffer_contains_crlf = False
+        tmp_time = time.time()
+        if (tmp_time - self.last_filenamechange_time) > 3600:
+            change_file = True
+            self.last_filenamechange_time = tmp_time
+            buffer_contains_crlf = '\r\n' in buf
+        
+        if change_file and buffer_contains_crlf:
+            parts = buf.split('\r\n')
+            if len(parts) != 0:
+                self.ofile.write(parts[0]+'\r\n')
+            self.ofile.close()
+            tmp_filename = self.ofilenamebase + "." + str(self.ofile_index)
+            os.system("mv " + tmp_filename + " " + tmp_filename + ".done") 
+            # if self.pushToGIS:
+            #     subprocess.Popen(["env" "MCP_TWITTER_ROOT="+ROOT_DIR, "python", "stats.py", "-P", tmp_filename + ".done", "results/coords-testing.csv"])
+            self.ofile_index += 1
+            self.ofile = open(self.ofilenamebase + "." + str(self.ofile_index), "a+")
+            self.ofile.write('\r\n'.join(parts[1:]))
+        else:
+            self.ofile.write(buf)
+        
 
     def run(self):
         try:
@@ -83,6 +125,40 @@ class StreamCatcher(threading.Thread):
             if self.download_list_win != None:
                 self.download_list_win.addstr(0, 0, "D: %d" % download_d)
             self.download_list_win.refresh()
+        # current_pos = self.ifile.tell()
+        # buf_data = ""
+        # readchar = self.ifile.read(2)
+        # while readchar != "":
+        #     buf_data += readchar
+        #     if readchar == '\r\n':
+        #         # process the tweet
+        #         self.process_tweet(buf_data)
+        #         # purge the buffer
+        #         buf_data = ""
+        #         # then record the new beginning
+        #         current_pos = self.ifile.tell()
+        #     readchar = self.ifile.read(2)
+        # self.ifile.seek(current_pos)
+
+    # def process_tweet(buf):
+    #     try:
+    #         tweet = jsonpickle.decode(line)
+    #     except ValueError, e:
+    #         print repr(e)
+    #     if tweet.has_key("delete") or tweet.has_key("scrub_geo") or tweet.has_key("limit"):
+    #         print "unimplemented data item"
+    #     else:
+    #         text = unicode(tweet["text"])
+    #         # print text
+    #         screen_name = tweet["user"]["screen_name"]
+    #         if tweet["user"].has_key("id_str"):
+    #             user_id = tweet["user"]["id_str"]
+    #             tweet_id = tweet["id_str"]
+    #         else:
+    #             user_id = str(tweet["user"]["id"])
+    #             tweet_id = str(tweet["id"])
+    #         tweet_w = time.strptime(tweet["created_at"], "%a %b %d %H:%M:%S +0000 %Y")
+
 
     def join(self, timeout=None):
         self.abortEvent.set()
