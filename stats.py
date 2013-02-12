@@ -1,5 +1,5 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 #
 # Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
 #
@@ -155,14 +155,14 @@ class Stats():
                     tweet_id = str(tweet["id"])
                 tweet_w = time.strptime(tweet["created_at"], "%a %b %d %H:%M:%S +0000 %Y")
                 tokens = tokenizer.tokenize(text)
-                token_display = screen_name + " " + user_id + " " + tweet_id
+#                token_display = screen_name + " " + user_id + " " + tweet_id
                 parsed_display = screen_name + " " + user_id + " " + tweet_id
                 if label:
                     parsed_display = parsed_display + " " + label
                 # parsing token by token for now. might think about parsing the whole sequence at once.
                 for token in tokens:
                     # print token
-                    token_display += " "+token
+#                    token_display += " "+token
                     if token[0] == "@":
                         parsed_display += " "+token+"[Mention]"
                         continue
