@@ -6,12 +6,10 @@ results/
 debug.log
 urllist.txt
 MD-2.0/*
-MP-1.0-Linux32/*
 *~
 python-twitter/*
 data/*
 hasim/*
 releases/*
-deasciifier/*
 followers-of-political-figures/*
 tmp/*
