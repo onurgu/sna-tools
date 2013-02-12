@@ -1,0 +1,3 @@
+[submodule "turkish-deasciifier"]
+	path = turkish-deasciifier
+	url = https://github.com/emres/turkish-deasciifier.git
