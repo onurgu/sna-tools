@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 #
 # Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
@@ -102,7 +102,8 @@ class TimelineHarvester(threading.Thread):
                 break
         self.log(self.getJobDescription() + ": Remaining Rate Limit: " + str(remaining_rate_limit))
 
-        self.sleep_duration = sleep_duration_between_calls
+        # self.sleep_duration = sleep_duration_between_calls
+        self.sleep_duration = int(reset_sleep_duration / remaining_rate_limit) + 1
 
     def log(self, text):
         # self.logfile.write(text+"\n")
@@ -248,7 +249,7 @@ class TimelineHarvester(threading.Thread):
             reset = datetime.datetime(*rfc822.parsedate(reset_time)[:7])
 
             # find the difference in time between now and the reset time + 1 hour
-            delta = reset + datetime.timedelta(hours=1) - datetime.datetime.utcnow()
+            delta = reset + datetime.timedelta(minutes=10) - datetime.datetime.utcnow()
 
         return [int(delta.seconds), int(limit)]
 
@@ -422,3 +423,7 @@ if __name__ == "__main__":
                 tmp_jobs.append(job)
         jobs = tmp_jobs
     conn.close()
+
+
+        
+        
