@@ -3631,6 +3631,8 @@ class Api(object):
 
       # find the difference in time between now and the reset time + 1 hour
       delta = reset + datetime.timedelta(hours=1) - datetime.datetime.utcnow()
+      # find the difference in time between now and the reset time + 10 minutes
+      delta = reset + datetime.timedelta(minutes=10) - datetime.datetime.utcnow()
 
       if not limit:
           return int(delta.seconds)
