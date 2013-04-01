@@ -1,1 +1,1 @@
-Rovereto-Twitter-Tokenizer/aux.py
+lib/Rovereto-Twitter-Tokenizer/aux.py
