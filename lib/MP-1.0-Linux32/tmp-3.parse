@@ -1,0 +1,4 @@
+<S> <S>+BSTag
+Şiir Şiir[Noun]+[Prop]+[A3sg]+[Pnon]+[Nom] : 15.82421875 şiir[Noun]+[A3sg]+[Pnon]+[Nom] : 11.1220703125
+okuduk oku[Verb]+[Pos]+DH[Past]+k[A1pl] : 13.7763671875 oku[Verb]+[Pos]-DHk[Noun+PastPart]+[A3sg]+[Pnon]+[Nom] : 11.955078125 oku[Verb]+[Pos]-DHk[Adj+PastPart]+[Pnon] : 13.8125
+</S> </S>+ESTag

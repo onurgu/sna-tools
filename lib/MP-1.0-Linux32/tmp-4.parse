@@ -1,0 +1,8 @@
+<S> <S>+BSTag
+Şiir Şiir[Noun]+[Prop]+[A3sg]+[Pnon]+[Nom] : 15.82421875 şiir[Noun]+[A3sg]+[Pnon]+[Nom] : 11.1220703125
+adında ad(I)[Noun]+[A3sg]+SH[P3sg]+NDA[Loc] : 10.8017578125 ad(I)[Noun]+[A3sg]+Hn[P2sg]+NDA[Loc] : 15.474609375
+bir bir[Det] : 3.8828125 bir[Noun]+[A3sg]+[Pnon]+[Nom] : 9.6826171875 bir[Adj] : 9.724609375 bir[Adv] : 15.431640625
+adet âdet[Noun]+[NoHats]+[A3sg]+[Pnon]+[Nom] : 9.1240234375 adet[Noun]+[A3sg]+[Pnon]+[Nom] : 12.25
+çocuk çocuk[Noun]+[A3sg]+[Pnon]+[Nom] : 8.3232421875
+vardı var[Adj]-YDH[Verb+Past]+[A3sg] : 13.349609375 var[Adj]-[Noun]+[A3sg]+[Pnon]+[Nom]-YDH[Verb+Past]+[A3sg] : 16.265625 var[Verb]+[Pos]+DH[Past]+[A3sg] : 10.6982421875 var[Noun]+[A3sg]+[Pnon]+[Nom]-YDH[Verb+Past]+[A3sg] : 21.10546875
+</S> </S>+ESTag
