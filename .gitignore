@@ -1,15 +1,9 @@
 captures/
-db/
 stats/
 results/
 *.pyc
 debug.log
-urllist.txt
-MD-2.0/*
 *~
 python-twitter/*
 data/*
-hasim/*
 releases/*
-followers-of-political-figures/*
-tmp/*
