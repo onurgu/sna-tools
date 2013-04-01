@@ -4,10 +4,8 @@
 # Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
 #
 
-import sys, threading, time, logging, os
-import pycurl
+import sys, threading, time, os
 
-import jsonpickle
 import logging, logging.handlers
 
 import Queue
@@ -23,15 +21,6 @@ from config import *
 
 import datetime
 import rfc822
-
-# We should ignore SIGPIPE when using pycurl.NOSIGNAL - see
-# the libcurl tutorial for more info.
-try:
-    import signal
-    from signal import SIGPIPE, SIG_IGN
-    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
-except ImportError:
-    pass
 
 ABORTING_WAIT_TOO_LONG_CODE = 1
 NOT_AUTHORIZED_ERROR_CODE = -1
