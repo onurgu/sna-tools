@@ -1,4 +1,18 @@
 
+INTRO
+=====
+
+This code includes three components:
+
+1. Streaming Filter in streamcatcher.py
+
+2. Timeline Harvester in timelineharvester.py
+
+3. Some sort of statistics in stats.py
+
+INSTALLATION
+===
+
 1. run scripts/install.sh
 
 2. run ./configure.sh
