@@ -1,13 +1,13 @@
 #!/bin/bash
 
-cd python-twitter;
+cd lib/python-twitter;
 
 python setup.py build
 sudo python setup.py install
 
 cd -
 
-cd python-oauth2
+cd lib/python-oauth2
 
 sudo aptitude install python-setuptools
 python setup.py build
@@ -17,3 +17,5 @@ cd -
 
 sudo aptitude install python-jsonpickle
 sudo aptitude install python-psycopg2
+
+# require pycurl >=7.19

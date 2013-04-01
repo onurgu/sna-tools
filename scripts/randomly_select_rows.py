@@ -21,7 +21,7 @@ else:
 
     # print line_count
 
-    n_draws = int(float(line_count) * percentage)
+    n_draws = int(float(line_count) * percentage/100)
 
     # print n_draws
 
