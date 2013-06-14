@@ -8,8 +8,8 @@ import sys, math
 import md5, yaml
 import curses, curses.textpad
 
-from IPython.Shell import IPShellEmbed
-ipshell = IPShellEmbed()
+#from IPython.Shell import IPShellEmbed
+#ipshell = IPShellEmbed()
 
 # local
 from streamcatcher import StreamCatcher
@@ -67,7 +67,7 @@ def main():
         elif c == ord('c'): stdscr.clear()  # Clear the screen
         elif c == ord('i'):
             curses.nocbreak(); stdscr.keypad(0); curses.echo()
-            ipshell()  # Start the ipython shell
+            #ipshell()  # Start the ipython shell
             curses.noecho(); curses.cbreak(); stdscr.keypad(1)
         elif c == ord('s'):
             status_win.clear()

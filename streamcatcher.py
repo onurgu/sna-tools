@@ -40,9 +40,31 @@ class StreamCatcher(threading.Thread):
         self.ofile = open(self.ofilenamebase + "." + str(self.ofile_index), "a+")
         # self.ifile = open(filename, "r")
 
+        params = {
+                'oauth_version': "1.0",
+                'oauth_nonce': oauth.generate_nonce(),
+                'oauth_timestamp': int(time.time()),
+        }
+
+        token = oauth.Token(key=app_token_key, secret=app_token_secret)
+        consumer = oauth.Consumer(key=app_consumer_key, secret=app_consumer_secret)
+
+        # Set our token/key parameters
+        params['oauth_token'] = token.key
+        params['oauth_consumer_key'] = consumer.key
+
+        req = oauth.Request(method="POST", url=url, parameters=params)
+
+        # Sign the request.
+        signature_method = oauth.SignatureMethod_HMAC_SHA1()
+        req.sign_request(signature_method, consumer, token)
+
+        header = req.to_header()
+
         # set libcurl options
         self.curl = pycurl.Curl()
         self.curl.setopt(pycurl.URL, url)
+        self.curl.setopt(pycurl.HTTPHEADER, ['Authorization: ' + header['Authorization']])
         # self.curl.setopt(pycurl.WRITEDATA, self.ofile)
         self.curl.setopt(pycurl.WRITEFUNCTION, self.writefunction)
         self.curl.setopt(pycurl.FOLLOWLOCATION, 1)
@@ -74,14 +96,14 @@ class StreamCatcher(threading.Thread):
             change_file = True
             self.last_filenamechange_time = tmp_time
             buffer_contains_crlf = '\r\n' in buf
-        
+
         if change_file and buffer_contains_crlf:
             parts = buf.split('\r\n')
             if len(parts) != 0:
                 self.ofile.write(parts[0]+'\r\n')
             self.ofile.close()
             tmp_filename = self.ofilenamebase + "." + str(self.ofile_index)
-            os.system("mv " + tmp_filename + " " + tmp_filename + ".done") 
+            os.system("mv " + tmp_filename + " " + tmp_filename + ".done")
             # if self.pushToGIS:
             #     subprocess.Popen(["env" "MCP_TWITTER_ROOT="+ROOT_DIR, "python", "stats.py", "-P", tmp_filename + ".done", "results/coords-testing.csv"])
             self.ofile_index += 1
@@ -89,7 +111,7 @@ class StreamCatcher(threading.Thread):
             self.ofile.write('\r\n'.join(parts[1:]))
         else:
             self.ofile.write(buf)
-        
+
 
     def run(self):
         try:
@@ -100,7 +122,7 @@ class StreamCatcher(threading.Thread):
             # self.logger.exception( e )
             # print e, repr(e), e.message, e.args
             # callback aborted
-            if e[0] == 42:                
+            if e[0] == 42:
                 print "callback aborted"
                 self.ofile.flush()
                 self.fixCaptureFile(self.ofile)
@@ -113,7 +135,7 @@ class StreamCatcher(threading.Thread):
         sys.stdout.write(".")
         sys.stdout.flush()
         # logging.shutdown()
-        
+
     def progress(self, download_t, download_d, upload_t, upload_d):
         self.download_list_win.clear()
         if self.abortEvent.isSet():
