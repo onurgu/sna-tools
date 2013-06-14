@@ -188,12 +188,12 @@ def getRequestParameters(conf_filename):
     else:
         postgis_server = ""
     if conf.has_key("type") and conf["type"] == "sample":
-        url = "https://stream.twitter.com/1/statuses/sample.json"
+        url = "https://stream.twitter.com/1.1/statuses/sample.json"
         # leave blank for sample
         postdata = ""
         filename = CAPTURE_DIR+("sample.txt")
     elif conf.has_key("type") and conf["type"] == "filter":
-        url = "https://stream.twitter.com/1/statuses/filter.json"
+        url = "https://stream.twitter.com/1.1/statuses/filter.json"
         postdata = preparePostdata(conf)
         if conf.has_key("hash_code"):
             filename = CAPTURE_DIR+("/filter-%s.txt" % conf["hash_code"])
