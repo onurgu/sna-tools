@@ -5,6 +5,8 @@
 # Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
 #
 
+import oauth2 as oauth
+
 import sys, threading, time, logging
 import pycurl
 
