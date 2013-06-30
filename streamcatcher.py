@@ -5,6 +5,8 @@
 # Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
 #
 
+from passwords import *
+
 import oauth2 as oauth
 
 import sys, threading, time, logging
@@ -45,28 +47,33 @@ class StreamCatcher(threading.Thread):
         params = {
                 'oauth_version': "1.0",
                 'oauth_nonce': oauth.generate_nonce(),
-                'oauth_timestamp': int(time.time()),
+                'oauth_timestamp': int(time.time())
         }
 
-        token = oauth.Token(key=app_token_key, secret=app_token_secret)
+        token = oauth.Token(key=access_token_key, secret=access_token_secret)
         consumer = oauth.Consumer(key=app_consumer_key, secret=app_consumer_secret)
 
         # Set our token/key parameters
         params['oauth_token'] = token.key
         params['oauth_consumer_key'] = consumer.key
 
-        req = oauth.Request(method="POST", url=url, parameters=params)
+        req = oauth.Request(method="POST", url=url, parameters=params, is_form_encoded=True)
 
         # Sign the request.
         signature_method = oauth.SignatureMethod_HMAC_SHA1()
         req.sign_request(signature_method, consumer, token)
 
-        header = req.to_header()
+        header = req.to_header(realm='Firehose')
+
+        self.ofile.write(header.__str__())
+
+	print header
 
         # set libcurl options
         self.curl = pycurl.Curl()
         self.curl.setopt(pycurl.URL, url)
-        self.curl.setopt(pycurl.HTTPHEADER, ['Authorization: ' + header['Authorization']])
+        self.curl.setopt(pycurl.HEADER, 1)
+        self.curl.setopt(pycurl.HTTPHEADER, ['Authorization: ' + str(header['Authorization'])])
         # self.curl.setopt(pycurl.WRITEDATA, self.ofile)
         self.curl.setopt(pycurl.WRITEFUNCTION, self.writefunction)
         self.curl.setopt(pycurl.FOLLOWLOCATION, 1)
