@@ -4,6 +4,8 @@
 # Copyright 2012 Onur Gungor <onurgu@boun.edu.tr>
 #
 
+import urllib
+
 import sys, math
 import md5, yaml
 import curses, curses.textpad
@@ -35,12 +37,19 @@ def main():
     download_win.refresh()
     download_list_win = download_win.subwin(height-2, width-2, begin_y+1, begin_x+1)
 
-    begin_x = (onethirds_win_width-1)+2 ; begin_y = 0
+    begin_x = (onethirds_win_width-1)+1 ; begin_y = 0
     height = half_win_heigth ; width = onethirds_win_width
     configs_win = curses.newwin(height, width, begin_y, begin_x)
     configs_win.border()
     configs_win.refresh()
     configs_list_win = configs_win.subwin(height-2, width-2, begin_y+1, begin_x+1)
+
+    begin_x = (2*onethirds_win_width-1)+1 ; begin_y = 0
+    height = half_win_heigth ; width = onethirds_win_width
+    trends_win = curses.newwin(height, width, begin_y, begin_x)
+    trends_win.border()
+    trends_win.refresh()
+    trends_list_win = trends_win.subwin(height-2, width-2, begin_y+1, begin_x+1)
 
     begin_x = 0 ; begin_y = win_maxy-1
     height = 1 ; width = win_maxx
@@ -63,6 +72,7 @@ def main():
         c = stdscr.getch()
         download_win.border()
         configs_win.border()
+        trends_win.border()
         if c == ord('q'): break  # Exit the while()
         elif c == ord('c'): stdscr.clear()  # Clear the screen
         elif c == ord('i'):
@@ -118,6 +128,7 @@ def main():
         configs_win.refresh()
         download_win.refresh()
         status_win.refresh()
+        trends_win.refresh()
         stdscr.refresh()
 
     curses.nocbreak(); stdscr.keypad(0); curses.echo()
@@ -193,6 +204,7 @@ def getRequestParameters(conf_filename):
         postdata = ""
         filename = CAPTURE_DIR+("sample.txt")
     elif conf.has_key("type") and conf["type"] == "filter":
+        #url = "http://127.0.0.1/1.1/statuses/filter.json"
         url = "https://stream.twitter.com/1.1/statuses/filter.json"
         postdata = preparePostdata(conf)
         if conf.has_key("hash_code"):
@@ -207,19 +219,19 @@ def preparePostdataForUserList(usernames):
     else:
         l = twitter_api.UsersLookup(screen_name=usernames)
         user_ids = [str(ll.id) for ll in l]
-        return "follow="+",".join(user_ids)
+        return ",".join(user_ids)
 
 def preparePostdata(conf):
-    postdata = ""
-    l = []
+    postdata = {}
     if conf.has_key("follow_usernames"):
-        l.append(preparePostdataForUserList(conf["follow_usernames"]))
+        tmp = preparePostdataForUserList(conf["follow_usernames"])
+        if len(tmp) != 0:
+            postdata["follow"] = tmp
     if conf.has_key("track_keywords") and conf["track_keywords"] != None and len(conf["track_keywords"]) != 0:
-        l.append("track="+(",".join(conf["track_keywords"])))
+        postdata["track"] = ",".join(conf["track_keywords"])
     if conf.has_key("locations") and conf["locations"] != None and len(conf["locations"]) != 0:
         # l.append("locations="+",".join(conf["locations"]))
-        l.append("locations="+",".join([str(x) for x in conf["locations"]]))
-    postdata = "&".join(l)
+        postdata["locations"] = ",".join([str(x) for x in conf["locations"]])
     return postdata
 
 ### Stats related functions
