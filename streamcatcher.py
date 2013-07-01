@@ -12,6 +12,8 @@ import oauth2 as oauth
 import sys, threading, time, logging
 import pycurl
 
+import urllib
+
 import os, subprocess
 
 #import psycopg2
@@ -29,7 +31,7 @@ except ImportError:
     pass
 
 class StreamCatcher(threading.Thread):
-    def __init__(self, url, filename, postdata = "", secrets = "", postgis_server = "", win=None):
+    def __init__(self, url, filename, postdata = {}, secrets = "", postgis_server = "", win=None):
         # logging
         # logging.basicConfig(file=LOGGING_DIR+"streamcatcher.log", level=logging.DEBUG )
         # self.logger= logging.getLogger( __name__ )
@@ -50,6 +52,9 @@ class StreamCatcher(threading.Thread):
                 'oauth_timestamp': int(time.time())
         }
 
+        for key, value in postdata.items():
+                params[key] = value
+
         token = oauth.Token(key=access_token_key, secret=access_token_secret)
         consumer = oauth.Consumer(key=app_consumer_key, secret=app_consumer_secret)
 
@@ -67,7 +72,7 @@ class StreamCatcher(threading.Thread):
 
         self.ofile.write(header.__str__())
 
-	print header
+    	print header
 
         # set libcurl options
         self.curl = pycurl.Curl()
@@ -86,7 +91,7 @@ class StreamCatcher(threading.Thread):
         else:
             self.curl.setopt(pycurl.USERPWD, secrets)
         if len(postdata) != 0:
-            self.curl.setopt(pycurl.POSTFIELDS, postdata)
+            self.curl.setopt(pycurl.POSTFIELDS, urllib.urlencode(postdata))
 
         self.abortEvent = threading.Event()
 
