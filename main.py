@@ -6,7 +6,7 @@
 
 import urllib
 
-import sys, math
+import sys, math, time
 import md5, yaml
 import curses, curses.textpad
 
@@ -15,11 +15,13 @@ import curses, curses.textpad
 
 # local
 from streamcatcher import StreamCatcher
+from trendscatcher import TrendsCatcher
 from config import *
 from stats import Stats
 
 threads = {"catchers": [],
-           "statsgenerators": []}
+           "statsgenerators": [],
+           "trendscatchers": []}
 
 def main():
 
@@ -105,6 +107,17 @@ def main():
             trackFilter(conf_filename, download_list_win)
             status_win.clear()
             status_win.addstr("Fetcher started. Press F to stop...")
+        elif c == ord('T'):
+            status_win.clear()
+            status_win.addstr("Please input location woeid")
+            woeid = input_win_textbox.edit().strip()
+            t = createTrendsThread(threads['trendscatchers'], woeid, trends_win)
+            status_win.clear()
+            status_win.addstr("Trends fetcher started.. Press t to stop...")
+        elif c == ord('t'):
+            threads['trendscatchers'][0].join()
+            status_win.clear()
+            status_win.addstr("Trends fetcher stopped..")
         elif c == ord('N'):
             status_win.clear()
             status_win.addstr("Please input config filename without the directory names")
@@ -130,6 +143,8 @@ def main():
         status_win.refresh()
         trends_win.refresh()
         stdscr.refresh()
+        # wait a little
+        time.sleep(0.1)
 
     curses.nocbreak(); stdscr.keypad(0); curses.echo()
     curses.endwin()
@@ -176,6 +191,13 @@ def createNewConfig(input_win, input_win_textbox, status_win):
     yaml.dump(conf, f, default_flow_style=False)
     f.close()
     return conf_filename
+
+def createTrendsThread(threads, requestParameters, win=None):
+    (woeid) = requestParameters
+    t = TrendsCatcher(woeid, win)
+    t.start()
+    threads.append(t)
+    return t
 
 def createThread(threads, requestParameters, win=None):
     (url, postdata, filename, postgis_server) = requestParameters
@@ -242,31 +264,5 @@ def generateStatsForFile(input_filename):
     return stats
 
 if __name__ == '__main__':
-    print "ad"
+    print "Starting.."
     main()
-
-
-################
-################
-
-# def getRequestParametersForFilter(postdata):
-#     url = "https://stream.twitter.com/1/statuses/filter.json"
-#     postdata = postdata
-#     filename = DB_DIR+("filter.txt")
-#     return [url, postdata, filename]
-
-# def getRequestParametersForSample():
-#     url = "https://stream.twitter.com/1/statuses/sample.json"
-#     postdata = ""
-#     filename = DB_DIR+("sample.txt")
-#     return [url, postdata, filename]
-
-# def getRequestParametersForSingleUser(userid):
-#     url = "https://stream.twitter.com/1/statuses/filter.json"
-#     postdata = "follow=%s" % userid
-#     filename = DB_DIR+("%s.txt" % userid)
-#     return [url, postdata, filename]
-
-# def trackSingleUser(userid, threads):
-#     requestParameters = getRequestParametersForSingleUser(userid)
-#     t = createThread(threads, requestParameters)
