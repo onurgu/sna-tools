@@ -16,6 +16,8 @@ RESULTS_DIR = ROOT_DIR+"results/"
 
 import passwords
 
+import mongo
+
 ESC = chr(27)
 
 LEXICON_FILENAME = ROOT_DIR+"data/lexicon-only-words-onur.txt"

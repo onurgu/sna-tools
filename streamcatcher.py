@@ -16,6 +16,10 @@ import urllib
 
 import os, subprocess
 
+import pymongo
+
+import jsonpickle
+
 #import psycopg2
 
 # local
@@ -38,6 +42,11 @@ class StreamCatcher(threading.Thread):
 
         # required for threads
         super(StreamCatcher, self).__init__()
+
+        mongo_client = pymongo.MongoClient(mongo.hostname, mongo.port)
+
+        self.direnaj_db = mongo_client.direnaj_db
+        self.prev_buf = ''
 
         self.ofile_index = 1
         self.ofilenamebase = filename
@@ -70,14 +79,15 @@ class StreamCatcher(threading.Thread):
 
         header = req.to_header(realm='Firehose')
 
-        self.ofile.write(header.__str__())
+        #        self.ofile.write(header.__str__())
 
-    	print header
+    	#        header
 
         # set libcurl options
         self.curl = pycurl.Curl()
         self.curl.setopt(pycurl.URL, url)
-        self.curl.setopt(pycurl.HEADER, 1)
+        # set to 0 for removing the header
+        # self.curl.setopt(pycurl.HEADER, 1)
         self.curl.setopt(pycurl.HTTPHEADER, ['Authorization: ' + str(header['Authorization'])])
         # self.curl.setopt(pycurl.WRITEDATA, self.ofile)
         self.curl.setopt(pycurl.WRITEFUNCTION, self.writefunction)
@@ -103,6 +113,31 @@ class StreamCatcher(threading.Thread):
         #     self.conn = None
 
     def writefunction(self, buf):
+
+        print buf
+        # mongo
+        self.prev_buf = self.prev_buf + buf
+
+        self.ofile.write(str(self.direnaj_db)+'\n')
+        self.ofile.write(str(self.direnaj_db.tweets))
+        self.ofile.flush()
+
+        if '\r\n' in self.prev_buf:
+           parts = self.prev_buf.split('\r\n')
+           if len(parts) > 1:
+               tmp = []
+               for p in parts[0:-1]:
+                   if len(p) > 0:
+                       tmp.append(jsonpickle.decode(p))
+               if len(tmp) > 0:
+                   self.direnaj_db.tweets.insert(tmp)
+               self.prev_buf = parts[-1]
+           else:
+               self.direnaj_db.tweets.insert(jsonpickle.decode(parts[0]))
+               self.prev_buf = ''
+
+        # end mongo
+
         change_file = False
         buffer_contains_crlf = False
         tmp_time = time.time()
@@ -151,15 +186,15 @@ class StreamCatcher(threading.Thread):
         # logging.shutdown()
 
     def progress(self, download_t, download_d, upload_t, upload_d):
+        if self.download_list_win == None:
+            return
         self.download_list_win.clear()
         if self.abortEvent.isSet():
-            if self.download_list_win != None:
-                self.download_list_win.addstr(0, 0, "Aborted")
+            self.download_list_win.addstr(0, 0, "Aborted")
             self.download_list_win.refresh()
             return -1
         else:
-            if self.download_list_win != None:
-                self.download_list_win.addstr(0, 0, "D: %d" % download_d)
+            self.download_list_win.addstr(0, 0, "D: %d" % download_d)
             self.download_list_win.refresh()
         # current_pos = self.ifile.tell()
         # buf_data = ""
@@ -224,42 +259,14 @@ class StreamCatcher(threading.Thread):
         f.truncate()
 
 if __name__ == "__main__":
-    # Read list of URIs from file specified on commandline
-    try:
-        urls = open(sys.argv[1]).readlines()
-    except IndexError:
-        # No file was specified, show usage string
-        print "Usage: %s <file with uris to fetch>" % sys.argv[0]
-        raise SystemExit
 
-# Initialize thread array and the file number
     threads = []
-    fileno = 0
-
 # Start one thread per URI in parallel
     t1 = time.time()
-    for url in urls:
-        f = open(str(fileno), "rwb")
-        t = StreamCatcher(url.rstrip(), f)
-        t.start()
-        threads.append((t, f))
-        fileno = fileno + 1
-# Wait for all threads to finish
-        for thread, file in threads:
-            thread.join()
-            file.close()
-            t2 = time.time()
-            print "\n** Multithreading, %d seconds elapsed for %d uris" % (int(t2-t1), len(urls))
-
-# Start one thread per URI in sequence
-    fileno = 0
-    t1 = time.time()
-    for url in urls:
-        f = open(str(fileno), "wb")
-        t = StreamCatcher(url.rstrip(), f, "", "")
-        t.start()
-        fileno = fileno + 1
-        t.join()
-        f.close()
+    t = StreamCatcher("https://stream.twitter.com/1.1/statuses/filter.json", "test.txt.streamcatcher", {"track": "mahkeme"})
+    t.start()
+    threads.append(t)
+    for thread in threads:
+        thread.join()
         t2 = time.time()
-        print "\n** Singlethreading, %d seconds elapsed for %d uris" % (int(t2-t1), len(urls))
+        print "\n** Multithreading, %d seconds elapsed" % (int(t2-t1))
