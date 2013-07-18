@@ -85,8 +85,6 @@ class StreamCatcher(threading.Thread):
 
         #        self.ofile.write(header.__str__())
 
-    	#        header
-
         # set libcurl options
         self.curl = pycurl.Curl()
         self.curl.setopt(pycurl.URL, url)
@@ -116,7 +114,7 @@ class StreamCatcher(threading.Thread):
         # else:
         #     self.conn = None
 
-    def my_hook(self, dct):
+    def datetime_hook(self, dct):
         if 'created_at' in dct:
             time_struct = time.strptime(dct['created_at'], "%a %b %d %H:%M:%S +0000 %Y") #Tue Apr 26 08:57:55 +0000 2011
             dct['created_at'] = datetime.datetime.fromtimestamp(time.mktime(time_struct))
@@ -139,13 +137,13 @@ class StreamCatcher(threading.Thread):
                tmp = []
                for p in parts[0:-1]:
                    if len(p) > 0:
-                       obj = json.loads(p, object_hook=self.my_hook)
+                       obj = json.loads(p, object_hook=self.datetime_hook)
                        tmp.append(obj)
                if len(tmp) > 0:
                    self.direnaj_db.tweets.insert(tmp)
                self.prev_buf = parts[-1]
            else:
-               obj = json.loads(parts[0], object_hook=self.my_hook)
+               obj = json.loads(parts[0], object_hook=self.datetime_hook)
                self.direnaj_db.tweets.insert(obj)
                self.prev_buf = ''
 
