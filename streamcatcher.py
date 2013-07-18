@@ -9,7 +9,7 @@ from passwords import *
 
 import oauth2 as oauth
 
-import sys, threading, time, logging
+import sys, threading, time, logging, datetime
 import pycurl
 
 import urllib
@@ -18,7 +18,8 @@ import os, subprocess
 
 import pymongo
 
-import jsonpickle
+# import jsonpickle
+import json
 
 #import psycopg2
 
@@ -46,7 +47,10 @@ class StreamCatcher(threading.Thread):
         mongo_client = pymongo.MongoClient(mongo.hostname, mongo.port)
 
         self.direnaj_db = mongo_client.direnaj_db
+        self.direnaj_db.tweets.ensure_index([('created_at', pymongo.DESCENDING)], background=True)
         self.prev_buf = ''
+
+        #        jsonpickle.set_preferred_backend('json')
 
         self.ofile_index = 1
         self.ofilenamebase = filename
@@ -112,6 +116,13 @@ class StreamCatcher(threading.Thread):
         # else:
         #     self.conn = None
 
+    def my_hook(self, dct):
+        if 'created_at' in dct:
+            time_struct = time.strptime(dct['created_at'], "%a %b %d %H:%M:%S +0000 %Y") #Tue Apr 26 08:57:55 +0000 2011
+            dct['created_at'] = datetime.datetime.fromtimestamp(time.mktime(time_struct))
+            return dct
+        return dct
+
     def writefunction(self, buf):
 
         print buf
@@ -128,12 +139,14 @@ class StreamCatcher(threading.Thread):
                tmp = []
                for p in parts[0:-1]:
                    if len(p) > 0:
-                       tmp.append(jsonpickle.decode(p))
+                       obj = json.loads(p, object_hook=self.my_hook)
+                       tmp.append(obj)
                if len(tmp) > 0:
                    self.direnaj_db.tweets.insert(tmp)
                self.prev_buf = parts[-1]
            else:
-               self.direnaj_db.tweets.insert(jsonpickle.decode(parts[0]))
+               obj = json.loads(parts[0], object_hook=self.my_hook)
+               self.direnaj_db.tweets.insert(obj)
                self.prev_buf = ''
 
         # end mongo
